@@ -1,0 +1,11 @@
+go 1.18
+
+use (
+	./bf-cli
+	./bf-core
+	./bf-dbs
+	./bf-gql
+	./bf-rest
+	./bf-rpc
+	./bf-shared-utils
+)
