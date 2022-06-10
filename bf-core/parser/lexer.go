@@ -2,6 +2,7 @@ package parser
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 )
 
@@ -78,10 +79,12 @@ func (l *Lexer) getNextToken() (Token, error) {
 		regex, _ := regexp.Compile(re)
 		value := l._match(regex, str)
 
+		// value not matched, ignore and continue
 		if value == "" {
 			continue
 		}
 
+		// is comment or whitespace
 		if _type == "nil" {
 			return l.getNextToken()
 		} else {
@@ -93,7 +96,8 @@ func (l *Lexer) getNextToken() (Token, error) {
 
 	}
 
-	return Token{}, nil
+	// if no rules are matched
+	panic(fmt.Sprintf("Unexpected token: %v", str[0]))
 }
 
 func (l *Lexer) _match(re *regexp.Regexp, val string) string {
