@@ -2,45 +2,88 @@ package parser
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
 )
 
-var tokens = []([2]string){
+var Spec = []([2]string){
+	// Whitespace and comments
 	{`^\s+`, "nil"},
-	{`^section`, "SECTION"},
+	{`^#.*`, "nil"},
+
+	// Delimiters and symbols
+	{`^\{`, "{"},
+	{`^\}`, "}"},
+	{`^;`, ";"},
+	{`^\[`, "["},
+	{`^\]`, "]"},
+
+	// Numbers
+	{`^\d+`, "NUMBER"},
+
+	// Strings
+	{`^"[^"]*"`, "STRING"},
+	{`^'[^']*'`, "STRING"},
+
+	// Operators
+	{`^=`, "ASSIGNMENT_OP"},
+	{`^,`, "COMMA"},
+
+	{`^\btrue\b`, "BOOLEAN"},
+	{`^\bfalse\b`, "BOOLEAN"},
+
+	// Keywords
+	{`^\bsection\b`, "SECTION"},
+	{`^\bprovider\b`, "PROVIDER"},
+	{`^\binterface\b`, "INTERFACE"},
+	{`^\bdatabase\b`, "DATABASE"},
+	{`^\bintegration\b`, "INTEGRATION"},
+	{`^\bresource\b`, "RESOURCE"},
+	{`^\bmethod\b`, "METHOD"},
+
+	// Other Keywords
+	{`^\bmigration\b`, "MIGRATION"},
+	{`^\bschemaDef\b`, "SCHEMA"},
+	{`^\bversion\b`, "VERSION"},
+
+	{`^\w+`, "IDENTIFIER"},
 }
 
-type Tokenizer struct {
-	_string string
+type Lexer struct {
 	_cursor int
+	_string string
 }
 
-func (t *Tokenizer) init(val string) {
-	t._cursor = 0
-	t._string = val
+type Token struct {
+	_type string
+	value string
 }
 
-func (t *Tokenizer) hasMoreTokens() bool {
-	return t._cursor < len(t._string)
+func (l *Lexer) init(val string) {
+	l._cursor = 0
+	l._string = val
 }
 
-func (t *Tokenizer) getNextToken() (Token, error) {
-	if !t.hasMoreTokens() {
+func (l *Lexer) hasMoreTokens() bool {
+	return l._cursor < len(l._string)
+}
+
+func (l *Lexer) getNextToken() (Token, error) {
+	if !l.hasMoreTokens() {
 		return Token{}, errors.New("no more tokens")
 	}
 
-	str := t._string[:t._cursor]
-
-	for _, v := range tokens {
+	str := l._string[l._cursor:]
+	for _, v := range Spec {
 		re, _type := v[0], v[1]
-		fmt.Println(re)
-		fmt.Println(_type)
 		regex, _ := regexp.Compile(re)
-		value := t._match(regex, str)
+		value := l._match(regex, str)
+
+		if value == "" {
+			continue
+		}
 
 		if _type == "nil" {
-			return t.getNextToken()
+			return l.getNextToken()
 		} else {
 			return Token{
 				_type: _type,
@@ -50,59 +93,15 @@ func (t *Tokenizer) getNextToken() (Token, error) {
 
 	}
 
-	panic("Syntax Error, unexpected token")
+	return Token{}, nil
 }
 
-func (t *Tokenizer) _match(re *regexp.Regexp, val string) string {
-	fmt.Println(val)
-	fmt.Println(re.Match([]byte(val)))
+func (l *Lexer) _match(re *regexp.Regexp, val string) string {
 	matched := re.FindAllString(val, 1)
-	if matched[0] == "" {
-		panic("no match")
+	if len(matched) == 0 {
+		return ""
 	}
-	t._cursor += len(matched[0])
+	l._cursor += len(matched[0])
 
 	return matched[0]
-}
-
-type Token struct {
-	_type string
-	value string
-}
-
-type Parser struct {
-	_string    string
-	_tokenizer Tokenizer
-	_lookahead Token
-}
-
-func (p *Parser) Parse(val string) Spec {
-	p._string = val
-	p._tokenizer.init(val)
-	p._lookahead, _ = p._tokenizer.getNextToken()
-
-	sections := make(map[SectionT]Section)
-	s := p.section()
-	sections[s.sectionType] = s
-
-	return Spec{
-		sections: sections,
-	}
-}
-
-func (p *Parser) section() Section {
-	p._eat("SECTION")
-	return Section{
-		sectionType: Providers,
-	}
-}
-
-func (p *Parser) _eat(t string) Token {
-	token := p._lookahead
-	fmt.Printf("%v", token)
-	if t != token._type {
-		panic("Errorrrrrrr")
-	}
-
-	return token
 }
