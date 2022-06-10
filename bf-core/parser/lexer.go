@@ -9,6 +9,7 @@ var Spec = []([2]string){
 	// Whitespace and comments
 	{`^\s+`, "nil"},
 	{`^#.*`, "nil"},
+	{`^\/\/.*`, "nil"},
 
 	// Delimiters and symbols
 	{`^\{`, "{"},
@@ -39,12 +40,11 @@ var Spec = []([2]string){
 	{`^\bintegration\b`, "INTEGRATION"},
 	{`^\bresource\b`, "RESOURCE"},
 	{`^\bmethod\b`, "METHOD"},
-
-	// Other Keywords
 	{`^\bmigration\b`, "MIGRATION"},
 	{`^\bschemaDef\b`, "SCHEMA"},
 	{`^\bversion\b`, "VERSION"},
 
+	// Others
 	{`^\w+`, "IDENTIFIER"},
 }
 
