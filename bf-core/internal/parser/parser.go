@@ -27,22 +27,25 @@ type Block struct {
 
 /*
 Specfile
-	: BlockStatementList
+	: SectionList
 	;
 
-BlockStatementList
+SectionList
+	: StatementList
+	;
+
+StatementList
+	: Statement
+	| StatementList Statement
+	;
+
+Statement
 	: BlockStatement
-	| BlockStatementList BlockStatement -> BlockStatement BlockStatement BlockStatement
+	| ExpressionStatement
 	;
 
 BlockStatement
-	: Block
-	| ExpressionStatement
-	| BlockStatementList
-	;
-
-Block
-	: 'TYPE' IDENTIFIER '{' OptBlockStatementList '}'
+	: 'TYPE' IDENTIFIER '{' OptStatementList '}'
 	;
 
 ExpressionStatement
