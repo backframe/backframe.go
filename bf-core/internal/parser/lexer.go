@@ -10,7 +10,6 @@ var Spec = []([2]string){
 	// Whitespace and comments
 	{`^\s+`, "nil"},
 	{`^#.*`, "nil"},
-	{`^\/\/.*`, "nil"},
 
 	// Delimiters and symbols
 	{`^\{`, "{"},
