@@ -19,9 +19,7 @@ func Serialize(blocks []parser.Block) []byte {
 }
 
 func WriteBlock(b parser.Block, depth int) string {
-	var tmpl strings.Builder
-	var blocksTmpl strings.Builder
-	var ident strings.Builder
+	var tmpl, blocksTmpl, ident strings.Builder
 
 	hasContent := len(b.Variables) > 0 || len(b.Blocks) > 0
 
