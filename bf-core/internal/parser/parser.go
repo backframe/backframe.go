@@ -19,10 +19,10 @@ func NewParser() Parser {
 }
 
 type Block struct {
-	_type     string
-	id        string
-	variables map[string]string
-	blocks    []Block
+	Type      string
+	Id        string
+	Variables map[string]string
+	Blocks    []Block
 }
 
 /*
@@ -164,13 +164,13 @@ func (p *Parser) blockStatement() []Block {
 		p._eat("{")
 
 		b := Block{
-			_type: v._type,
-			id:    id.value,
+			Type: v._type,
+			Id:   id.value,
 		}
 
 		vars, blocks := p.statementList()
-		b.variables = vars
-		b.blocks = blocks
+		b.Variables = vars
+		b.Blocks = blocks
 
 		list = append(list, b)
 
