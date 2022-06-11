@@ -10,17 +10,28 @@ func Serialize(blocks []Block) []byte {
 	// Start with each section
 	for _, b := range blocks {
 		// b is a section
-		contents.WriteString(WriteBlock(b))
+		contents.WriteString(WriteBlock(b, 0))
 		contents.WriteString("\n")
 	}
 	return []byte(contents.String())
 }
 
-func WriteBlock(b Block) string {
+func WriteBlock(b Block, depth int) string {
 	var tmpl strings.Builder
 	var blocksTmpl strings.Builder
+	var ident strings.Builder
 
-	tmpl.WriteString(fmt.Sprintf("%v %v { \n", strings.ToLower(b._type), b.id))
+	hasContent := len(b.variables) > 0 || len(b.blocks) > 0
+
+	for i := 0; i < depth; i++ {
+		ident.WriteString("\t")
+	}
+
+	tmpl.WriteString(fmt.Sprintf("%v%v %v {", ident.String(), strings.ToLower(b._type), b.id))
+
+	if hasContent {
+		tmpl.WriteString("\n")
+	}
 
 	// handle block variables
 	for k, v := range b.variables {
@@ -28,21 +39,26 @@ func WriteBlock(b Block) string {
 			// its an array
 			val := strings.ReplaceAll(v, "|", ",")
 			tmp := fmt.Sprintf("%v = [%v,];", k, val)
-			tmpl.WriteString(fmt.Sprintf("\t%v\n", tmp))
+			tmpl.WriteString(fmt.Sprintf("\t%v%v\n", ident.String(), tmp))
 		} else {
 			tmp := fmt.Sprintf("%v = %v;", k, v)
-			tmpl.WriteString(fmt.Sprintf("\t%v\n", tmp))
+			tmpl.WriteString(fmt.Sprintf("\t%v%v\n", ident.String(), tmp))
 		}
 	}
 
 	// handle nested blocks
 	for i := 0; i < len(b.blocks); i++ {
 		currentBlock := b.blocks[i]
-		tmpl := WriteBlock(currentBlock)
-		blocksTmpl.WriteString(tmpl)
+		tmpl := WriteBlock(currentBlock, depth+1)
+		blocksTmpl.WriteString(fmt.Sprintf("\n%v\n", tmpl))
 	}
+
 	if len(blocksTmpl.String()) > 0 {
-		tmpl.WriteString(fmt.Sprintf("%v\n", blocksTmpl.String()))
+		tmpl.WriteString(fmt.Sprintf("%v", blocksTmpl.String()))
+	}
+
+	if hasContent {
+		tmpl.WriteString(ident.String())
 	}
 	tmpl.WriteString("}")
 
