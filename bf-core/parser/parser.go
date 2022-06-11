@@ -1,6 +1,9 @@
 package parser
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Parser struct {
 	_string    string
@@ -15,19 +18,24 @@ func NewParser() Parser {
 	}
 }
 
+type Block struct {
+	_type     string
+	id        string
+	variables map[string]string
+	blocks    []Block
+}
+
 /**
 Specfile
 	: SectionList
 	;
 */
-func (p *Parser) Parse(val string) BfSpec {
+func (p *Parser) Parse(val string) []Block {
 	p._string = val
 	p._lexer.init(val)
 	p._lookahead, _ = p._lexer.getNextToken()
 
-	return BfSpec{
-		Sections: p.sectionList(),
-	}
+	return p.sectionList()
 }
 
 /*
@@ -36,8 +44,8 @@ SectionList
 	| SectionList Section -> Section Section
 	;
 */
-func (p *Parser) sectionList() []Section {
-	list := []Section{p.section()}
+func (p *Parser) sectionList() []Block {
+	list := []Block{p.section()}
 
 	for {
 		// check if no more lookahed
@@ -57,29 +65,19 @@ Section
 	;
 
 */
-func (p *Parser) section() Section {
+func (p *Parser) section() Block {
 	p._eat("SECTION")
-	ident := p._eat("IDENTIFIER")
+	id := p._eat("IDENTIFIER")
 	p._eat("{")
 
-	var t SectionType
+	vars, blocks := p.statementList()
 
-	switch ident.value {
-	case "Providers":
-		t = Providers
-	case "Interfaces":
-		t = Interfaces
-	case "Integrations":
-		t = Integrations
-	case "Databases":
-		t = Databases
-	}
-
-	body := p.statementList(t)
 	p._eat("}")
-	return Section{
-		_type: t,
-		Body:  body,
+	return Block{
+		_type:     "SECTION",
+		id:        id.value,
+		variables: vars,
+		blocks:    blocks,
 	}
 }
 
@@ -90,42 +88,141 @@ StatementList
 	| StatementList Statement -> Statement Statement Statement
 	;
 */
-func (p *Parser) statementList(t SectionType) SectionBody {
-	body := SectionBody{}
+func (p *Parser) statementList() (map[string]string, []Block) {
+	variables, blocks := p.statement()
 
-	if t == Providers {
-		providers := ConsumeProviderBlock(p)
-		body.Providers = append(body.Providers, providers...)
-	} else if t == Interfaces {
-		interfaces := ConsumeInterfaceBlock(p)
-		body.Interfaces = append(body.Interfaces, interfaces...)
-	} else if t == Databases {
-		p._eat("DATABASE")
-		p._eat("IDENTIFIER")
+	for {
+		if p._lookahead._type == "}" {
+			break
+		}
+		newVars, newBlocks := p.statement()
+		blocks = append(blocks, newBlocks...)
+		for k, v := range newVars {
+			variables[k] = v
+		}
 	}
 
-	return body
+	return variables, blocks
 }
 
-/**
-
-StatementList
-	: Statement
-	| StatementList Statement -> Statement Statement Statement
-	;
-
+/*
 Statement
-	: DeclarationStatement
+	: ExpressionStatement ';'
 	| BlockStatement
 	;
+*/
+func (p *Parser) statement() (map[string]string, []Block) {
+	switch p._lookahead._type {
+	case "IDENTIFIER":
+		return p.expressionStatement(), []Block{}
+	default:
+		return make(map[string]string), p.blockStatement()
+	}
+}
 
-DeclarationStatement
-	: 'Identifier' ASSIGNMENT_OP 'Value'
+/*
+
+ExpressionStatement
+	: IDENTIFIER ASSIGNMENT_OP Literal
 	;
 
-BlockStatement
-	: 'KEYWORD' 'IDENTIFIER' '{' Statement '}'
 */
+func (p *Parser) expressionStatement() map[string]string {
+	values := make(map[string]string)
+
+	for {
+		if p._lookahead._type == "}" || p._lookahead._type != "IDENTIFIER" {
+			break
+		}
+
+		for {
+			if p._lookahead._type == "}" || p._lookahead._type == ";" || p._lookahead._type != "IDENTIFIER" {
+				break
+			}
+			v := p._eat("IDENTIFIER")
+			p._eat("ASSIGNMENT_OP")
+			// TODO: Implement literals
+			id := p.literal()
+
+			values[v.value] = id.value
+			p._eat(";")
+		}
+	}
+
+	return values
+}
+
+/*
+Literal
+	: NUMBER
+	| STRING
+	| BOOLEAN
+	| OBJECT
+	| ARRAY
+	;
+
+*/
+func (p *Parser) literal() Token {
+	switch p._lookahead._type {
+	case "STRING":
+		return p._eat("STRING")
+	case "BOOLEAN":
+		return p._eat("BOOLEAN")
+	case "[":
+		return p.array()
+	default:
+		return p._eat("STRING")
+	}
+}
+
+func (p *Parser) array() Token {
+	list := []string{}
+
+	p._eat("[")
+
+	for {
+		if p._lookahead.value == "]" {
+			break
+		}
+		val := p._eat("STRING")
+		p._eat("COMMA")
+		list = append(list, val.value)
+	}
+
+	p._eat("]")
+	return Token{
+		_type: "ARRAY",
+		value: strings.Join(list, "|"),
+	}
+}
+
+func (p *Parser) blockStatement() []Block {
+	list := []Block{}
+
+	for {
+		if p._lookahead._type == "}" {
+			break
+		}
+		v := p._eat(p._lookahead._type)
+		id := p._eat("IDENTIFIER")
+		p._eat("{")
+
+		b := Block{
+			_type: v._type,
+			id:    id.value,
+		}
+
+		vars, blocks := p.statementList()
+		b.variables = vars
+		b.blocks = blocks
+
+		list = append(list, b)
+
+		p._eat("}")
+	}
+
+	return list
+}
 
 func (p *Parser) _eat(_type string) Token {
 	token := p._lookahead
@@ -136,9 +233,3 @@ func (p *Parser) _eat(_type string) Token {
 	p._lookahead, _ = p._lexer.getNextToken()
 	return token
 }
-
-// Common factors
-// Blocks have similar syntax
-// Blocks can expect variables, or not
-// Blocks have custom-defined keywords
-// Blocks have nested blocks
