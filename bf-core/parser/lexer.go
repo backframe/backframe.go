@@ -20,7 +20,7 @@ var Spec = []([2]string){
 	{`^\]`, "]"},
 
 	// Numbers
-	{`^\d+`, "NUMBER"},
+	// {`^\d+`, "NUMBER"},
 
 	// Strings
 	{`^"[^"]*"`, "STRING"},
