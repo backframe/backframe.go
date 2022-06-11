@@ -25,69 +25,45 @@ type Block struct {
 	blocks    []Block
 }
 
-/**
+/*
 Specfile
-	: SectionList
+	: BlockStatementList
 	;
+
+BlockStatementList
+	: BlockStatement
+	| BlockStatementList BlockStatement -> BlockStatement BlockStatement BlockStatement
+	;
+
+BlockStatement
+	: Block
+	| ExpressionStatement
+	| BlockStatementList
+	;
+
+Block
+	: 'TYPE' IDENTIFIER '{' OptBlockStatementList '}'
+	;
+
+ExpressionStatement
+	: IDENTIFIER ASSIGNMENT_OP LITERAL
+	;
+
+Literal
+	: STRING
+	| ARRAY
+	| OBJECT
+	;
+
 */
 func (p *Parser) Parse(val string) []Block {
 	p._string = val
 	p._lexer.init(val)
 	p._lookahead, _ = p._lexer.getNextToken()
 
-	return p.sectionList()
+	return p.blockStatement()
 }
 
-/*
-SectionList
-	: Section
-	| SectionList Section -> Section Section
-	;
-*/
-func (p *Parser) sectionList() []Block {
-	list := []Block{p.section()}
-
-	for {
-		// check if no more lookahed
-		if !p._lexer.hasMoreTokens() {
-			break
-		}
-
-		list = append(list, p.section())
-	}
-
-	return list
-}
-
-/*
-Section
-	: 'section' 'IDENTIFIER' '{' StatementList '}'
-	;
-
-*/
-func (p *Parser) section() Block {
-	p._eat("SECTION")
-	id := p._eat("IDENTIFIER")
-	p._eat("{")
-
-	vars, blocks := p.statementList()
-
-	p._eat("}")
-	return Block{
-		_type:     "SECTION",
-		id:        id.value,
-		variables: vars,
-		blocks:    blocks,
-	}
-}
-
-/**
-
-StatementList
-	: Statement
-	| StatementList Statement -> Statement Statement Statement
-	;
-*/
 func (p *Parser) statementList() (map[string]string, []Block) {
 	variables, blocks := p.statement()
 
@@ -105,12 +81,6 @@ func (p *Parser) statementList() (map[string]string, []Block) {
 	return variables, blocks
 }
 
-/*
-Statement
-	: ExpressionStatement ';'
-	| BlockStatement
-	;
-*/
 func (p *Parser) statement() (map[string]string, []Block) {
 	switch p._lookahead._type {
 	case "IDENTIFIER":
@@ -120,13 +90,6 @@ func (p *Parser) statement() (map[string]string, []Block) {
 	}
 }
 
-/*
-
-ExpressionStatement
-	: IDENTIFIER ASSIGNMENT_OP Literal
-	;
-
-*/
 func (p *Parser) expressionStatement() map[string]string {
 	values := make(map[string]string)
 
@@ -152,16 +115,6 @@ func (p *Parser) expressionStatement() map[string]string {
 	return values
 }
 
-/*
-Literal
-	: NUMBER
-	| STRING
-	| BOOLEAN
-	| OBJECT
-	| ARRAY
-	;
-
-*/
 func (p *Parser) literal() Token {
 	switch p._lookahead._type {
 	case "STRING":
@@ -200,7 +153,7 @@ func (p *Parser) blockStatement() []Block {
 	list := []Block{}
 
 	for {
-		if p._lookahead._type == "}" {
+		if p._lookahead._type == "}" || !p._lexer.hasMoreTokens() {
 			break
 		}
 		v := p._eat(p._lookahead._type)
