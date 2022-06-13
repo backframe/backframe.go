@@ -105,6 +105,14 @@ func main() {
 		Help("Login to your backframe user account").
 		Action(cmd.Login)
 
+	rest := app.SubCommand("rest").Alias("r").Help("Manage Rest API functionality")
+
+	rest.SubCommand("generate").
+		Alias("g").
+		Help("Generate a Rest API for current backframe project")
+
+	rest.SubCommand("routes").Help("List all the rest routes of the project")
+
 	db := app.SubCommand("db").Alias("database").Help("Manage database functionality")
 
 	db.SubCommand("migrate").
