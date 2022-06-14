@@ -6,6 +6,6 @@ use (
 	./bf-dbs
 	./bf-gql
 	./bf-rest
-	./bf-rpc
+	./bf-grpc
 	./bf-shared-utils
 )
