@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 var Spec = []([2]string){
@@ -41,7 +42,6 @@ var Spec = []([2]string){
 	{`^\bresource\b`, "RESOURCE"},
 	{`^\bmethod\b`, "METHOD"},
 	{`^\bmigration\b`, "MIGRATION"},
-	{`^\bschemaDef\b`, "SCHEMA"},
 	{`^\bversion\b`, "VERSION"},
 
 	// Others
@@ -51,6 +51,8 @@ var Spec = []([2]string){
 type Lexer struct {
 	_cursor int
 	_string string
+	line    int
+	column  int
 }
 
 type Token struct {
@@ -104,7 +106,17 @@ func (l *Lexer) _match(re *regexp.Regexp, val string) string {
 	if len(matched) == 0 {
 		return ""
 	}
-	l._cursor += len(matched[0])
+
+	value := matched[0]
+	new_lines := strings.Count(value, "\n")
+
+	l._cursor += len(value)
+	l.line += new_lines
+	if new_lines > 0 {
+		// reset columns on newline
+		l.column = 0
+	}
+	l.column += len(strings.TrimLeft(value, " "))
 
 	return matched[0]
 }
