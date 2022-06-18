@@ -153,6 +153,7 @@ func (p *Parser) expressionStatement() Block {
 }
 
 func (p *Parser) literal() Token {
+	// TODO: Add support for object literals
 	switch p._lookahead._type {
 	case "STRING":
 		return p._eat("STRING")
